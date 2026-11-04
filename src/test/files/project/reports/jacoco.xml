@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.1//EN" "report.dtd">
+<report name="project">
+  <package name="app/a">
+    <class name="app/a/A" sourcefilename="A.java">
+      <method name="&lt;init&gt;" desc="()V" line="5"><counter type="METHOD" missed="0" covered="1"/></method>
+      <method name="run" desc="()I" line="7"><counter type="METHOD" missed="0" covered="1"/></method>
+      <method name="value" desc="()I" line="11"><counter type="METHOD" missed="1" covered="0"/></method>
+    </class>
+  </package>
+</report>
