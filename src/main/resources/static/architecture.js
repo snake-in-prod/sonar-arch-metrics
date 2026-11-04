@@ -5,7 +5,9 @@ window.registerExtension('archmetrics/architecture', function (options) {
     'arch_cycle_nodes_total', 'arch_dep_parents', 'arch_dep_parents_over', 'arch_dep_fanout_max', 'arch_pkg_size_max',
     'arch_nesting_topn_avg', 'arch_unused_classes', 'arch_classes', 'arch_unused_methods', 'arch_methods_total',
     'arch_unused_variables', 'arch_variables_total', 'arch_methods_covered', 'arch_methods_coverable', 'arch_top_offenders'];
-  var el = options.el;
+  var el = document.createElement('div');
+  el.setAttribute('style', 'padding:0 20px 20px 20px');
+  options.el.appendChild(el);
   var base = (window.baseUrl || '');
   var params = new URLSearchParams({component: options.component.key, metricKeys: keys.join(','), additionalFields: 'metrics'});
   var branch = options.branchLike;
@@ -35,8 +37,17 @@ window.registerExtension('archmetrics/architecture', function (options) {
     return t;
   }
 
+  function show(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    // FLOAT measures come back as "4413528.0" or "1.94743692E9"
+    var n = Number(value);
+    return /^[-+0-9.Ee]+$/.test(String(value)) && !isNaN(n) ? String(Math.round(n * 100) / 100) : String(value);
+  }
+
   function cell(value) {
-    return text('td', value === undefined || value === null ? '' : String(value), 'padding:4px 12px 4px 0;border-bottom:1px solid #eee;vertical-align:top');
+    return text('td', show(value), 'padding:4px 12px 4px 0;border-bottom:1px solid #eee;vertical-align:top');
   }
 
   el.appendChild(text('h1', 'Architecture metrics', 'font-size:20px;margin:16px 0'));
@@ -77,6 +88,6 @@ window.registerExtension('archmetrics/architecture', function (options) {
     .catch(function (e) { status.textContent = 'Cannot load the measures: ' + e; });
 
   return function () {
-    el.innerHTML = '';
+    options.el.innerHTML = '';
   };
 });
