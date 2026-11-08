@@ -12,8 +12,10 @@ See [docs/SPEC.md](docs/SPEC.md) for the specification.
 
 ## Metrics
 
-Key prefix `arch_`. File metrics are added up to directories and the project (sum or maximum); project metrics exist
-on the project only. All are numeric, not hidden, usable in quality gates.
+Key prefix `arch_`. File metrics are added up to directories and the project (sum or maximum). Set metrics are
+computed for the project and again for each module, a top-level directory of the project (the first directory of a
+file's path below the base directory), over that module's files only: the module's directory `<project>:<module>`
+gets them. All are numeric (`arch_top_offenders` is JSON), not hidden, usable in quality gates.
 
 | Key | Level | Definition |
 |---|---|---|
@@ -25,21 +27,31 @@ on the project only. All are numeric, not hidden, usable in quality gates.
 | `arch_method_lines_sum` | file, sum | code lines of all methods |
 | `arch_class_lines_max` | file, max | largest class in code lines; nested and local classes are not part of the outer class |
 | `arch_cbo_max` | file, max | largest number of distinct classes one class references, library classes included |
-| `arch_dup_lines` | project | code lines in duplicated blocks, first occurrence not counted |
-| `arch_mfs_refs` | project | references in a minimum feedback arc set, summed over the levels of the package tree |
-| `arch_cycle_refs_total` | project | references between sibling packages, summed over the levels |
-| `arch_cycle_nodes` | project | packages in a cycle with their siblings, summed over the levels |
-| `arch_cycle_nodes_total` | project | packages in the tree, summed over the levels |
-| `arch_dep_parents` | project | packages with at least 2 sub-packages |
-| `arch_dep_parents_over` | project | parents whose sub-package graph has E − N + P above `sonar.arch.dep.complexity` and a fan-out above `sonar.arch.dep.fanout` |
-| `arch_dep_fanout_max` | project | largest number of siblings one sub-package references |
-| `arch_pkg_size_max` | project | largest product of code lines and methods of one package's own files |
-| `arch_nesting_topn_avg` | project | average nesting depth of the `sonar.arch.nesting.topN` most deeply nested methods |
-| `arch_unused_classes` / `arch_classes` | project | private or package-private classes never referenced / all classes |
-| `arch_unused_methods` / `arch_methods_total` | project | private or package-private methods never referenced / all methods (constructors excluded) |
-| `arch_unused_variables` / `arch_variables_total` | project | private or package-private fields and local variables never referenced / all fields and locals |
+| `arch_dup_lines` | set | code lines in duplicated blocks, first occurrence not counted |
+| `arch_mfs_refs` | set | references in a minimum feedback arc set, summed over the levels of the package tree |
+| `arch_cycle_refs_total` | set | references between sibling packages, summed over the levels |
+| `arch_cycle_nodes` | set | packages in a cycle with their siblings, summed over the levels |
+| `arch_cycle_nodes_total` | set | packages in the tree, summed over the levels |
+| `arch_dep_parents` | set | packages with at least 2 sub-packages |
+| `arch_dep_parents_over` | set | parents whose sub-package graph has E − N + P above `sonar.arch.dep.complexity` and a fan-out above `sonar.arch.dep.fanout` |
+| `arch_dep_fanout_max` | set | largest number of siblings one sub-package references |
+| `arch_pkg_size_max` | set | largest product of code lines and methods of one package's own files |
+| `arch_nesting_topn_avg` | set | average nesting depth of the `sonar.arch.nesting.topN` most deeply nested methods |
+| `arch_unused_classes` / `arch_classes` | set | private or package-private classes never referenced / all classes |
+| `arch_unused_methods` / `arch_methods_total` | set | private or package-private methods never referenced / all methods (constructors excluded) |
+| `arch_unused_variables` / `arch_variables_total` | set | private or package-private fields and local variables never referenced / all fields and locals |
 | `arch_methods_covered`, `arch_methods_coverable` | file, sum | methods covered by tests and methods known, from the JaCoCo XML METHOD counter |
-| `arch_top_offenders` | project | JSON: the 10 methods, classes and packages behind each maximum |
+| `arch_method_lines_over_count` | file, sum | methods with more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_class_lines_over_count` | file, sum | classes with more code lines than `sonar.arch.class.lines.threshold` |
+| `arch_cbo_over_count` | file, sum | classes referencing more distinct classes than `sonar.arch.cbo.threshold` |
+| `arch_halstead_over_count` | file, sum | methods with Halstead volume above 200, difficulty above 5, effort above 1000 and more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_global_refs` | file, sum | per method, the distinct non-final static fields of project classes it reads or writes, summed |
+| `arch_halstead_effort_avg` | set | average Halstead effort of the methods |
+| `arch_pkg_size_over_count` | set | packages whose size (as in `arch_pkg_size_max`) is above `sonar.arch.pkg.size.threshold` |
+| `arch_class_mfs_refs` | set | references in a minimum feedback arc set of the graph of top-level classes |
+| `arch_class_refs_total` | set | references between different top-level classes |
+| `arch_class_cycle_nodes` / `arch_class_nodes` | set | top-level classes in a cycle / all compiled top-level classes |
+| `arch_top_offenders` | set | JSON: the 10 methods, classes and packages behind each maximum and each count above |
 
 ### How each value is counted
 
@@ -76,6 +88,16 @@ on the project only. All are numeric, not hidden, usable in quality gates.
   somewhere in its package. Annotated items, `main`, serialization members (`serialVersionUID`, `readObject`...),
   abstract methods and members of interfaces are not candidates. A local variable is unused when its name never
   appears in an expression of its method; loop and resource variables are not candidates.
+- **Halstead** per method, over the tokens of its code lines: operands are identifiers and literals, operators all
+  other tokens (keywords included); closing brackets are not counted. Volume = N × log2(n), difficulty =
+  n1 / 2 × N2 / n2, effort = volume × difficulty.
+- **Mutable static fields** are static fields that are neither final nor synthetic. Each method (not the static
+  initialiser) counts each such field of a project class it reads or writes once.
+- **Class cycles.** One graph: nodes are the compiled top-level classes (nested classes are part of theirs), edges the
+  references between them. The minimum feedback arc set is found as for packages.
+- **Modules.** Set metrics of a module use only the module's files and the references among its own classes; the
+  sensor cannot save on directories, so it stores them as JSON on the module's first file (hidden metric
+  `arch_module_measures`) and the measure computer moves them up to the module's directory.
 - **Method coverage** merges all JaCoCo XML reports (`sonar.coverage.jacoco.xmlReportPaths` of the project and its
   modules, plus `target/site/jacoco*/jacoco.xml` and `build/reports/jacoco/**/*.xml`): a method is covered when any
   report covers it.
@@ -90,6 +112,10 @@ on the project only. All are numeric, not hidden, usable in quality gates.
 | `sonar.arch.dep.complexity` | `12` | E − N + P limit of a parent package |
 | `sonar.arch.dep.fanout` | `9` | sub-package fan-out limit of a parent package |
 | `sonar.arch.nesting.topN` | `10` | how many of the most deeply nested methods `arch_nesting_topn_avg` averages |
+| `sonar.arch.method.lines.threshold` | `20` | code lines above which a method counts in `arch_method_lines_over_count` and `arch_halstead_over_count` |
+| `sonar.arch.class.lines.threshold` | `1000` | code lines above which a class counts in `arch_class_lines_over_count` |
+| `sonar.arch.cbo.threshold` | `100` | coupling above which a class counts in `arch_cbo_over_count` |
+| `sonar.arch.pkg.size.threshold` | `27000000` | package size above which a package counts in `arch_pkg_size_over_count` |
 
 A setting changes the measure, never the code. Set them on the project, or on the scanner command line.
 
@@ -116,6 +142,8 @@ Nothing in the plugin depends on the branch: with a branch plugin every branch a
 - Unused items are matched by name, not by symbol: an item whose name is used for something else in its file or
   package counts as used.
 - Two classes of the same name in one package (in different modules) are one class for coupling and packages.
+- A module directory whose path SonarQube shows collapsed (for example `core/src/main/java` as one node) gets no
+  module values.
 - The duplication index holds up to 16 million tokens (roughly 3 million lines).
 
 ## Build

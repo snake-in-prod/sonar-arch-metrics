@@ -12,6 +12,10 @@ public class ArchMetricsPlugin implements Plugin {
   public static final String DEP_COMPLEXITY = "sonar.arch.dep.complexity";
   public static final String DEP_FANOUT = "sonar.arch.dep.fanout";
   public static final String NESTING_TOPN = "sonar.arch.nesting.topN";
+  public static final String METHOD_LINES = "sonar.arch.method.lines.threshold";
+  public static final String CLASS_LINES = "sonar.arch.class.lines.threshold";
+  public static final String CBO_THRESHOLD = "sonar.arch.cbo.threshold";
+  public static final String PKG_SIZE = "sonar.arch.pkg.size.threshold";
 
   @Override
   public void define(Context context) {
@@ -25,7 +29,15 @@ public class ArchMetricsPlugin implements Plugin {
         + "sub-package graph is above this...", "12", PropertyType.INTEGER),
       prop(DEP_FANOUT, "Dependency fan-out limit", "...and the largest sub-package fan-out is above this.", "9", PropertyType.INTEGER),
       prop(NESTING_TOPN, "Deepest methods", "How many of the most deeply nested methods arch_nesting_topn_avg averages.", "10",
-        PropertyType.INTEGER));
+        PropertyType.INTEGER),
+      prop(METHOD_LINES, "Method size threshold", "Methods with more code lines count in arch_method_lines_over_count.", "20",
+        PropertyType.INTEGER),
+      prop(CLASS_LINES, "Class size threshold", "Classes with more code lines count in arch_class_lines_over_count.", "1000",
+        PropertyType.INTEGER),
+      prop(CBO_THRESHOLD, "Coupling threshold", "Classes referencing more distinct classes count in arch_cbo_over_count.", "100",
+        PropertyType.INTEGER),
+      prop(PKG_SIZE, "Package size threshold", "Packages with a larger size (code lines x methods) count in arch_pkg_size_over_count.",
+        "27000000", PropertyType.FLOAT));
   }
 
   private static PropertyDefinition prop(String key, String name, String description, String defaultValue, PropertyType type) {

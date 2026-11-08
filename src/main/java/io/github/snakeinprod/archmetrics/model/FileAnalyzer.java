@@ -38,8 +38,10 @@ import com.github.javaparser.ast.stmt.SynchronizedStmt;
 import com.github.javaparser.ast.stmt.TryStmt;
 import com.github.javaparser.ast.stmt.WhileStmt;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -115,7 +117,7 @@ public final class FileAnalyzer {
         ccOver++;
       }
       owners.add(new Owner(m, methodStart(m), true));
-      methods.add(new FileStats.MethodInfo(typeName(m) + "#" + methodName(m), line(m), cc, nesting, 0));
+      methods.add(new FileStats.MethodInfo(typeName(m) + "#" + methodName(m), line(m), cc, nesting, 0, 0, 0));
     }
     List<Node> types = new ArrayList<>();
     cu.findAll(TypeDeclaration.class).forEach(t -> types.add(t));
@@ -136,20 +138,32 @@ public final class FileAnalyzer {
     // each code line belongs to its innermost method (for method sizes) and innermost named type (class sizes)
     int[] methodLines = new int[methodNodes.size()];
     int[] typeLines = new int[types.size()];
+    Map<Integer, Integer> methodOfLine = new HashMap<>();
     for (int l : code) {
       Owner inner = innermost(owners, l, o -> true);
       if (inner != null && inner.method()) {
-        methodLines[methodNodes.indexOf(inner.node())]++;
+        int i = methodNodes.indexOf(inner.node());
+        methodLines[i]++;
+        methodOfLine.put(l, i);
       }
       Owner type = innermost(owners, l, o -> !o.method() && o.node() instanceof TypeDeclaration);
       if (type != null) {
         typeLines[types.indexOf(type.node())]++;
       }
     }
+    List<List<String>> methodTokens = new ArrayList<>();
+    methodNodes.forEach(m -> methodTokens.add(new ArrayList<>()));
+    for (Tokens.Token t : tokens) {
+      Integer i = methodOfLine.get(t.line());
+      if (i != null) {
+        methodTokens.get(i).add(t.text());
+      }
+    }
     int methodLinesSum = 0;
     for (int i = 0; i < methods.size(); i++) {
       FileStats.MethodInfo m = methods.get(i);
-      methods.set(i, new FileStats.MethodInfo(m.name(), m.line(), m.complexity(), m.nesting(), methodLines[i]));
+      double[] h = halstead(methodTokens.get(i));
+      methods.set(i, new FileStats.MethodInfo(m.name(), m.line(), m.complexity(), m.nesting(), methodLines[i], h[0], h[1]));
       methodLinesSum += methodLines[i];
     }
     List<FileStats.ClassInfo> classes = new ArrayList<>();
@@ -285,6 +299,45 @@ public final class FileAnalyzer {
   private static boolean isBoundary(Node c) {
     Node parent = c.getParentNode().orElse(null);
     return c instanceof TypeDeclaration || c instanceof BodyDeclaration && (parent instanceof ObjectCreationExpr || parent instanceof EnumConstantDeclaration);
+  }
+
+  // ------------------------------------------------------------------ Halstead
+
+  private static final Set<String> KEYWORDS = Set.of("abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
+    "const", "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if",
+    "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private", "protected", "public",
+    "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void",
+    "volatile", "while", "var", "yield", "record");
+  private static final Set<String> CLOSERS = Set.of(")", "]", "}");
+
+  /**
+   * Volume N * log2(n) and difficulty n1 / 2 * N2 / n2. Operands are identifiers and literals, operators every other
+   * token; a closing bracket belongs to its opening one.
+   */
+  static double[] halstead(List<String> tokens) {
+    Set<String> operators = new HashSet<>();
+    Set<String> operands = new HashSet<>();
+    int bigN1 = 0;
+    int bigN2 = 0;
+    for (String t : tokens) {
+      if (CLOSERS.contains(t)) {
+        continue;
+      }
+      char c = t.charAt(0);
+      boolean operand = Character.isJavaIdentifierStart(c) && !KEYWORDS.contains(t) || Character.isDigit(c) || c == '"' || c == '\''
+        || c == '.' && t.length() > 1 && Character.isDigit(t.charAt(1));
+      if (operand) {
+        operands.add(t);
+        bigN2++;
+      } else {
+        operators.add(t);
+        bigN1++;
+      }
+    }
+    int n = operators.size() + operands.size();
+    double volume = n < 2 ? 0 : (bigN1 + bigN2) * Math.log(n) / Math.log(2);
+    double difficulty = operands.isEmpty() ? 0 : operators.size() / 2.0 * bigN2 / operands.size();
+    return new double[] {volume, difficulty};
   }
 
   // ------------------------------------------------------------------ names and helpers

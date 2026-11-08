@@ -16,7 +16,11 @@ public record FileStats(String path, String pkg, boolean generated, int methods,
   int ccOver, int methodLinesSum, int classLinesMax, List<MethodInfo> methodInfos, List<ClassInfo> classInfos, int classesTotal,
   int methodsTotal, int variablesTotal, int unusedLocals, List<Declaration> declarations, Set<String> usedNames) {
 
-  public record MethodInfo(String name, int line, int complexity, int nesting, int lines) {
+  /** @param volume Halstead volume of the method's tokens; {@code difficulty} likewise */
+  public record MethodInfo(String name, int line, int complexity, int nesting, int lines, double volume, double difficulty) {
+    public double effort() {
+      return volume * difficulty;
+    }
   }
 
   public record ClassInfo(String name, int line, int lines) {

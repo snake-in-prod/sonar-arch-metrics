@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import javax.tools.ToolProvider;
@@ -35,7 +36,8 @@ class AnalysisTest {
     List<Analysis.Source> sources = new ArrayList<>();
     for (Path f : files) {
       String key = PROJECT.relativize(f).toString().replace('\\', '/');
-      sources.add(new Analysis.Source(key, f.getFileName().toString(), Files.readString(f)));
+      String module = f.getParent().getFileName().toString();
+      sources.add(new Analysis.Source(key, f.getFileName().toString(), Files.readString(f), module));
     }
     result = Analysis.run(sources, Set.of(classes), Set.of(PROJECT.resolve("reports/jacoco.xml")), Analysis.Settings.DEFAULT);
   }
@@ -88,6 +90,44 @@ class AnalysisTest {
     // u: 32 + 7 code lines x 7 methods (6 in Unused, 1 in Other)
     assertThat((Double) project("arch_pkg_size_max")).isEqualTo(39.0 * 7);
     assertThat((String) project("arch_top_offenders")).contains("arch_cc_max").contains("app.u.Unused");
+  }
+
+  @Test
+  void class_cycle_between_a_and_b() {
+    // A <-> B (2 references each way), Other -> Unused 2; Unused's nested classes count as Unused
+    assertThat(project("arch_class_nodes")).isEqualTo(4);
+    assertThat(project("arch_class_refs_total")).isEqualTo(6);
+    assertThat(project("arch_class_cycle_nodes")).isEqualTo(2);
+    assertThat(project("arch_class_mfs_refs")).isEqualTo(2);
+    assertThat((String) project("arch_top_offenders")).contains("arch_class_cycle_nodes").contains("app.a.A");
+  }
+
+  @Test
+  void new_file_counts_are_zero_on_small_code() {
+    assertThat(file("a/A.java", "arch_method_lines_over_count")).isEqualTo(0);
+    assertThat(file("a/A.java", "arch_class_lines_over_count")).isEqualTo(0);
+    assertThat(file("a/A.java", "arch_halstead_over_count")).isEqualTo(0);
+    assertThat(file("a/A.java", "arch_cbo_over_count")).isEqualTo(0);
+    assertThat(file("a/A.java", "arch_global_refs")).isEqualTo(0);
+    assertThat(project("arch_pkg_size_over_count")).isEqualTo(0);
+    assertThat((Double) project("arch_halstead_effort_avg")).isPositive();
+  }
+
+  @Test
+  void module_values_cover_their_own_files_only() {
+    assertThat(result.modules()).containsOnlyKeys("a", "b", "u");
+    Map<String, Object> u = result.modules().get("u");
+    assertThat(u).containsKeys(ArchMetrics.SCOPED.stream().map(m -> m.getKey()).toArray(String[]::new));
+    assertThat(u.get("arch_unused_classes")).isEqualTo(1);
+    assertThat(u.get("arch_classes")).isEqualTo(4);
+    assertThat((Double) u.get("arch_pkg_size_max")).isEqualTo(39.0 * 7);
+    assertThat((String) u.get("arch_top_offenders")).contains("app.u.Unused").doesNotContain("app.a.A");
+    // a cycle needs both packages: none inside one module
+    Map<String, Object> a = result.modules().get("a");
+    assertThat(a.get("arch_cycle_nodes")).isEqualTo(0);
+    assertThat(a.get("arch_class_cycle_nodes")).isEqualTo(0);
+    assertThat(a.get("arch_class_nodes")).isEqualTo(1);
+    assertThat(a.get("arch_classes")).isEqualTo(1);
   }
 
   @Test

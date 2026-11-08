@@ -4,7 +4,10 @@ window.registerExtension('archmetrics/architecture', function (options) {
     'arch_class_lines_max', 'arch_cbo_max', 'arch_dup_lines', 'arch_mfs_refs', 'arch_cycle_refs_total', 'arch_cycle_nodes',
     'arch_cycle_nodes_total', 'arch_dep_parents', 'arch_dep_parents_over', 'arch_dep_fanout_max', 'arch_pkg_size_max',
     'arch_nesting_topn_avg', 'arch_unused_classes', 'arch_classes', 'arch_unused_methods', 'arch_methods_total',
-    'arch_unused_variables', 'arch_variables_total', 'arch_methods_covered', 'arch_methods_coverable', 'arch_top_offenders'];
+    'arch_unused_variables', 'arch_variables_total', 'arch_methods_covered', 'arch_methods_coverable',
+    'arch_method_lines_over_count', 'arch_class_lines_over_count', 'arch_cbo_over_count', 'arch_halstead_over_count',
+    'arch_halstead_effort_avg', 'arch_global_refs', 'arch_pkg_size_over_count', 'arch_class_mfs_refs', 'arch_class_refs_total',
+    'arch_class_cycle_nodes', 'arch_class_nodes', 'arch_top_offenders'];
   var el = document.createElement('div');
   el.setAttribute('style', 'padding:0 20px 20px 20px');
   options.el.appendChild(el);

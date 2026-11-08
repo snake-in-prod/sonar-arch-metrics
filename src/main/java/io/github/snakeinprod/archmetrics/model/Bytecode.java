@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -30,8 +32,12 @@ public final class Bytecode {
    * @param name       internal name ({@code com/acme/Foo$Bar})
    * @param sourcePath {@code com/acme/Foo.java}
    * @param references referenced class to the number of occurrences (the class itself excluded)
+   * @param mutableStatics names of the class's static fields that are not final
+   * @param staticRefs     per method (static initialiser excluded), each distinct static field it reads or writes, as
+   *                       {@code owner.field}
    */
-  public record ClassRefs(String name, String sourcePath, boolean generated, Map<String, Integer> references) {
+  public record ClassRefs(String name, String sourcePath, boolean generated, Map<String, Integer> references, Set<String> mutableStatics,
+    List<String> staticRefs) {
     public String packageName() {
       int slash = name.lastIndexOf('/');
       return slash < 0 ? "" : name.substring(0, slash).replace('/', '.');
@@ -62,6 +68,8 @@ public final class Bytecode {
 
   public static ClassRefs read(byte[] bytes) {
     Map<String, Integer> refs = new HashMap<>();
+    Set<String> mutableStatics = new HashSet<>();
+    List<String> staticRefs = new ArrayList<>();
     String[] info = new String[2];
     boolean[] generated = {false};
     new ClassReader(bytes).accept(new ClassVisitor(Opcodes.ASM9) {
@@ -85,12 +93,23 @@ public final class Bytecode {
 
       @Override
       public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
+        if ((access & Opcodes.ACC_STATIC) != 0 && (access & (Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC)) == 0) {
+          mutableStatics.add(name);
+        }
         return null;
       }
 
       @Override
       public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+        Set<String> statics = new HashSet<>();
         return new MethodVisitor(Opcodes.ASM9) {
+          @Override
+          public void visitEnd() {
+            if (!"<clinit>".equals(name)) {
+              staticRefs.addAll(statics);
+            }
+          }
+
           @Override
           public void visitMethodInsn(int opcode, String owner, String n, String d, boolean itf) {
             add(refs, owner);
@@ -99,6 +118,9 @@ public final class Bytecode {
           @Override
           public void visitFieldInsn(int opcode, String owner, String n, String d) {
             add(refs, owner);
+            if (opcode == Opcodes.GETSTATIC || opcode == Opcodes.PUTSTATIC) {
+              statics.add(owner + "." + n);
+            }
           }
 
           @Override
@@ -116,13 +138,27 @@ public final class Bytecode {
     refs.remove(name);
     int slash = name.lastIndexOf('/');
     String file = info[1] != null ? info[1] : name.substring(slash + 1).replaceAll("\\$.*", "") + ".java";
-    return new ClassRefs(name, (slash < 0 ? "" : name.substring(0, slash + 1)) + file, generated[0], Map.copyOf(refs));
+    return new ClassRefs(name, (slash < 0 ? "" : name.substring(0, slash + 1)) + file, generated[0], Map.copyOf(refs),
+      Set.copyOf(mutableStatics), List.copyOf(staticRefs));
   }
 
   private static void add(Map<String, Integer> refs, String owner) {
     if (!owner.startsWith("[")) {
       refs.merge(owner, 1, Integer::sum);
     }
+  }
+
+  /** Accesses of this class's methods to the mutable static fields of the given classes. */
+  public static int globalRefs(ClassRefs c, Map<String, ClassRefs> classes) {
+    int n = 0;
+    for (String ref : c.staticRefs()) {
+      int dot = ref.lastIndexOf('.');
+      ClassRefs owner = classes.get(ref.substring(0, dot));
+      if (owner != null && owner.mutableStatics().contains(ref.substring(dot + 1))) {
+        n++;
+      }
+    }
+    return n;
   }
 
   /** Distinct classes a class references (coupling between objects), libraries included. */
