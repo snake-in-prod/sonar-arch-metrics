@@ -1,7 +1,7 @@
 # sonar-arch-metrics: specification
 
 **Goal.** A SonarQube plugin for Java that measures maintainability and test metrics known from the literature and
-stores the raw values as measures, per file, package (directory) and project, so other plugins, dashboards and
+stores the raw values as measures, per file, package (directory), module (top-level directory) and project, so other plugins, dashboards and
 quality gates can use them. It computes no scores.
 
 **Target.** SonarQube Community Build 26.x and later, sonar-plugin-api of that release, Java 21. Works with the
@@ -10,7 +10,7 @@ parser on `sonar.sources` plus `sonar.java.binaries` and `sonar.java.libraries`.
 
 **Extension points to use.** `Metrics` for all metrics below, `Sensor` per file, one project-level `ProjectSensor`
 for graph metrics (saved on `context.project()`), `MeasureComputer` only to add file values up to packages and
-project, `PageDefinition` for one page, `PropertyDefinition` for every threshold.
+project and to move module values to their directory, `PageDefinition` for one page, `PropertyDefinition` for every threshold.
 
 ## Rules for all metrics
 
@@ -20,7 +20,9 @@ project, `PageDefinition` for one page, `PropertyDefinition` for every threshold
 - A "reference" from A to B = A calls a method of B, reads a field of B, or writes a field of B. Counted once per
   pair for coupling, once per occurrence for cycle metrics.
 - Store counts and maxima as INT or FLOAT metrics, percentages as PERCENT. Mark every metric `qualitative(false)`,
-  not hidden, so quality gates can use it. Domain Architecture or Tests.
+  not hidden, so quality gates can use it. Domain Architecture or Tests. The one exception is the hidden carrier
+  `arch_module_measures`, which only moves module values up.
+- Level "project" metrics are also computed per module: a top-level directory, over its own files and classes.
 - Thresholds are settings with the defaults below; a setting changes the measure, never the code.
 
 ## Metrics
@@ -48,6 +50,14 @@ Key prefix `arch_`. Every metric listed is required.
 | `arch_pkg_size_max` | project | largest product of own-file code lines and own-file methods over all packages |
 | `arch_nesting_topn_avg` | project | average maximum nesting depth of the `sonar.arch.nesting.topN` (default 10) deepest methods |
 | `arch_unused_classes`, `arch_unused_methods`, `arch_unused_variables` | project | private or package-private items never referenced; with totals `arch_classes`, `arch_methods_total`, `arch_variables_total` |
+| `arch_method_lines_over_count` | file, sum up | methods with more code lines than `sonar.arch.method.lines.threshold` (default 20) |
+| `arch_class_lines_over_count` | file, sum up | classes with more code lines than `sonar.arch.class.lines.threshold` (default 1000) |
+| `arch_cbo_over_count` | file, sum up | classes whose coupling is above `sonar.arch.cbo.threshold` (default 100) |
+| `arch_halstead_over_count` | file, sum up | methods with Halstead volume > 200, difficulty > 5, effort > 1000 and more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_global_refs` | file, sum up | per method, distinct non-final static fields of project classes read or written, summed |
+| `arch_halstead_effort_avg` | project | average Halstead effort of all methods |
+| `arch_pkg_size_over_count` | project | packages whose size is above `sonar.arch.pkg.size.threshold` (default 27,000,000) |
+| `arch_class_mfs_refs`, `arch_class_refs_total`, `arch_class_cycle_nodes`, `arch_class_nodes` | project | the cycle metrics on one graph of top-level classes |
 | `arch_methods_covered`, `arch_methods_coverable` | file, sum up | from the JaCoCo XML METHOD counter (`sonar.coverage.jacoco.xmlReportPaths`) |
 
 **Method complexity.** 1 + one per `if`, `for`, for-each, `while`, `do`, `catch`, `?:`, and one per whole `switch`

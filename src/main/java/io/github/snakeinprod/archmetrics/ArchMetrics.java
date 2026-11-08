@@ -59,15 +59,47 @@ public class ArchMetrics implements Metrics {
   public static final Metric<Integer> METHODS_COVERABLE = new Metric.Builder("arch_methods_coverable", "Coverable methods",
     Metric.ValueType.INT).setDescription("Methods known to JaCoCo").setDomain(TESTS).setQualitative(false)
     .setDirection(Metric.DIRECTION_NONE).create();
+  public static final Metric<Integer> METHOD_LINES_OVER_COUNT = integer("arch_method_lines_over_count", "Methods over size threshold",
+    "Methods with more code lines than sonar.arch.method.lines.threshold");
+  public static final Metric<Integer> CLASS_LINES_OVER_COUNT = integer("arch_class_lines_over_count", "Classes over size threshold",
+    "Classes with more code lines than sonar.arch.class.lines.threshold");
+  public static final Metric<Integer> CBO_OVER_COUNT = integer("arch_cbo_over_count", "Classes over coupling threshold",
+    "Classes that reference more distinct classes than sonar.arch.cbo.threshold");
+  public static final Metric<Integer> HALSTEAD_OVER_COUNT = integer("arch_halstead_over_count", "Methods over effort thresholds",
+    "Methods with Halstead volume above 200, difficulty above 5, effort above 1000 and more code lines than "
+      + "sonar.arch.method.lines.threshold");
+  public static final Metric<Integer> GLOBAL_REFS = integer("arch_global_refs", "Mutable static field accesses",
+    "Per method, the distinct non-final static fields of project classes it reads or writes, summed; static initialisers excluded");
+  public static final Metric<Double> HALSTEAD_EFFORT_AVG = new Metric.Builder("arch_halstead_effort_avg", "Halstead effort average",
+    Metric.ValueType.FLOAT).setDescription("Average Halstead effort (difficulty x volume) of the methods").setDomain(ARCHITECTURE)
+    .setQualitative(false).setDirection(Metric.DIRECTION_WORST).setDecimalScale(2).create();
+  public static final Metric<Integer> PKG_SIZE_OVER_COUNT = integer("arch_pkg_size_over_count", "Packages over size threshold",
+    "Packages whose own-file code lines times own-file methods is above sonar.arch.pkg.size.threshold");
+  public static final Metric<Integer> CLASS_MFS_REFS = integer("arch_class_mfs_refs", "Class feedback arc set references",
+    "References in a minimum feedback arc set of the graph of top-level classes");
+  public static final Metric<Integer> CLASS_REFS_TOTAL = integer("arch_class_refs_total", "References between classes",
+    "All references between different top-level classes; nested classes count as their top-level class");
+  public static final Metric<Integer> CLASS_CYCLE_NODES = integer("arch_class_cycle_nodes", "Classes in cycles",
+    "Top-level classes that are part of a cycle");
+  public static final Metric<Integer> CLASS_NODES = integer("arch_class_nodes", "Top-level classes", "Compiled top-level classes");
   public static final Metric<String> TOP_OFFENDERS = new Metric.Builder("arch_top_offenders", "Top offenders", Metric.ValueType.DATA)
     .setDescription("JSON: the 10 classes, methods and packages behind every maximum").setDomain(ARCHITECTURE).setQualitative(false)
     .create();
+  /** Per top-level directory: the {@link #SCOPED} values, carried from a file up to the directory. */
+  public static final Metric<String> MODULE_MEASURES = new Metric.Builder("arch_module_measures", "Module measures",
+    Metric.ValueType.DATA).setDescription("Internal: JSON of the directory-level values on their way up").setDomain(ARCHITECTURE)
+    .setQualitative(false).setHidden(true).create();
 
   /** Summed from files to directories and the project. */
   public static final List<Metric<?>> SUMMED = List.of(METHODS, CODE_LINES, CC_SUM, CC_OVER_COUNT, METHOD_LINES_SUM, METHODS_COVERED,
-    METHODS_COVERABLE);
+    METHODS_COVERABLE, METHOD_LINES_OVER_COUNT, CLASS_LINES_OVER_COUNT, CBO_OVER_COUNT, HALSTEAD_OVER_COUNT, GLOBAL_REFS);
   /** Maximum of the files below. */
   public static final List<Metric<?>> MAXED = List.of(CC_MAX, CLASS_LINES_MAX, CBO_MAX);
+  /** Computed over a set of files: the project, and each top-level directory. */
+  public static final List<Metric<?>> SCOPED = List.of(DUP_LINES, MFS_REFS, CYCLE_REFS_TOTAL, CYCLE_NODES, CYCLE_NODES_TOTAL,
+    DEP_PARENTS, DEP_PARENTS_OVER, DEP_FANOUT_MAX, PKG_SIZE_MAX, PKG_SIZE_OVER_COUNT, NESTING_TOPN_AVG, HALSTEAD_EFFORT_AVG,
+    UNUSED_CLASSES, UNUSED_METHODS, UNUSED_VARIABLES, CLASSES, METHODS_TOTAL, VARIABLES_TOTAL, CLASS_MFS_REFS, CLASS_REFS_TOTAL,
+    CLASS_CYCLE_NODES, CLASS_NODES, TOP_OFFENDERS);
 
   private static Metric<Integer> integer(String key, String name, String description) {
     return new Metric.Builder(key, name, Metric.ValueType.INT).setDescription(description).setDomain(ARCHITECTURE).setQualitative(false)
@@ -89,6 +121,7 @@ public class ArchMetrics implements Metrics {
     return List.of(METHODS, CODE_LINES, CC_SUM, CC_MAX, CC_OVER_COUNT, METHOD_LINES_SUM, CLASS_LINES_MAX, CBO_MAX, DUP_LINES, MFS_REFS,
       CYCLE_REFS_TOTAL, CYCLE_NODES, CYCLE_NODES_TOTAL, DEP_PARENTS, DEP_PARENTS_OVER, DEP_FANOUT_MAX, PKG_SIZE_MAX, NESTING_TOPN_AVG,
       UNUSED_CLASSES, UNUSED_METHODS, UNUSED_VARIABLES, CLASSES, METHODS_TOTAL, VARIABLES_TOTAL, METHODS_COVERED, METHODS_COVERABLE,
-      TOP_OFFENDERS);
+      TOP_OFFENDERS, METHOD_LINES_OVER_COUNT, CLASS_LINES_OVER_COUNT, CBO_OVER_COUNT, HALSTEAD_OVER_COUNT, GLOBAL_REFS, HALSTEAD_EFFORT_AVG,
+      PKG_SIZE_OVER_COUNT, CLASS_MFS_REFS, CLASS_REFS_TOTAL, CLASS_CYCLE_NODES, CLASS_NODES, MODULE_MEASURES);
   }
 }

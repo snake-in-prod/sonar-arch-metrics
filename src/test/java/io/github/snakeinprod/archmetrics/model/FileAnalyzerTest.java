@@ -75,4 +75,12 @@ class FileAnalyzerTest {
     assertThat(s.generated()).isTrue();
     assertThat(s.methods()).isZero();
   }
+
+  @Test
+  void halstead_volume_and_difficulty() {
+    // operators return + ; (n1 3, N1 3), operands a b (n2 2, N2 2)
+    double[] h = FileAnalyzer.halstead(java.util.List.of("return", "a", "+", "b", ";"));
+    assertThat(h[0]).isCloseTo(5 * Math.log(5) / Math.log(2), org.assertj.core.data.Offset.offset(1e-9));
+    assertThat(h[1]).isEqualTo(1.5);
+  }
 }
