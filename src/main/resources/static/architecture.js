@@ -49,8 +49,9 @@ window.registerExtension('archmetrics/architecture', function (options) {
     return /^[-+0-9.Ee]+$/.test(String(value)) && !isNaN(n) ? String(Math.round(n * 100) / 100) : String(value);
   }
 
-  function cell(value) {
-    return text('td', show(value), 'padding:4px 12px 4px 0;border-bottom:1px solid #eee;vertical-align:top');
+  function cell(value, muted) {
+    return text('td', muted ? 'n/a' : show(value),
+      'padding:4px 12px 4px 0;border-bottom:1px solid #eee;vertical-align:top' + (muted ? ';color:#999' : ''));
   }
 
   el.appendChild(text('h1', 'Architecture metrics', 'font-size:20px;margin:16px 0'));
@@ -64,11 +65,20 @@ window.registerExtension('archmetrics/architecture', function (options) {
       (data.metrics || []).forEach(function (m) { defs[m.key] = m; });
       var values = {};
       (data.component.measures || []).forEach(function (m) { values[m.metric] = m.value; });
+      if (values.arch_code_lines === undefined && values.arch_classes === undefined) {
+        // Python, TypeScript, Dart... projects: no Java analysed, so no measures at all
+        el.appendChild(text('p', 'No architecture metrics: this plugin measures Java code.', 'color:#666'));
+        return;
+      }
       var t = table(['Metric', 'Key', 'Value', 'Definition']);
       keys.filter(function (k) { return k !== 'arch_top_offenders'; }).forEach(function (k) {
         var tr = document.createElement('tr');
         var d = defs[k] || {};
-        [d.name || k, k, values[k], d.description].forEach(function (v) { tr.appendChild(cell(v)); });
+        var missing = values[k] === undefined; // e.g. coverage measures without a JaCoCo report
+        tr.appendChild(cell(d.name || k));
+        tr.appendChild(cell(k));
+        tr.appendChild(cell(values[k], missing));
+        tr.appendChild(cell(d.description));
         t.appendChild(tr);
       });
       el.appendChild(t);
