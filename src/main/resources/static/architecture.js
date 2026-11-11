@@ -10,6 +10,9 @@ window.registerExtension('archmetrics/architecture', function (options) {
     'arch_class_cycle_nodes', 'arch_class_nodes', 'arch_top_offenders'];
   var el = document.createElement('div');
   el.setAttribute('style', 'padding:0 20px 20px 20px');
+  // SonarQube places extension pages in a grid of two columns: span both, or the page gets only the first one
+  options.el.style.gridColumn = '1 / -1';
+  options.el.style.width = '100%';
   options.el.appendChild(el);
   var base = (window.baseUrl || '');
   var params = new URLSearchParams({component: options.component.key, metricKeys: keys.join(','), additionalFields: 'metrics'});
