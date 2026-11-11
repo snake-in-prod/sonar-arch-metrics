@@ -90,11 +90,59 @@ public class ArchMetrics implements Metrics {
     Metric.ValueType.DATA).setDescription("Internal: JSON of the directory-level values on their way up").setDomain(ARCHITECTURE)
     .setQualitative(false).setHidden(true).create();
 
+  // Python: own keys, so Python files never change the Java values above
+  public static final Metric<Integer> PY_CODE_LINES = integer("arch_py_code_lines", "Python code lines",
+    "Python lines with code, minus docstrings, string-only statements and assert statements");
+  public static final Metric<Integer> PY_FUNCTIONS = integer("arch_py_functions", "Python functions",
+    "Python functions and methods (def), nested ones included, lambdas excluded");
+  public static final Metric<Integer> PY_CLASSES = integer("arch_py_classes", "Python classes", "Python classes, nested ones included");
+  public static final Metric<Integer> PY_CC_SUM = integer("arch_py_cc_sum", "Python function complexity sum",
+    "Sum of the complexity of all Python functions");
+  public static final Metric<Integer> PY_CC_MAX = integer("arch_py_cc_max", "Python function complexity max",
+    "Largest Python function complexity");
+  public static final Metric<Integer> PY_CC_OVER_COUNT = integer("arch_py_cc_over_count", "Python functions over complexity threshold",
+    "Python functions whose complexity is above sonar.arch.cc.threshold");
+  public static final Metric<Integer> PY_FUNCTION_LINES_SUM = integer("arch_py_function_lines_sum", "Python function code lines",
+    "Sum of the code lines of all Python functions");
+  public static final Metric<Integer> PY_FUNCTION_LINES_OVER_COUNT = integer("arch_py_function_lines_over_count",
+    "Python functions over size threshold", "Python functions with more code lines than sonar.arch.method.lines.threshold");
+  public static final Metric<Integer> PY_HALSTEAD_OVER_COUNT = integer("arch_py_halstead_over_count",
+    "Python functions over effort thresholds", "Python functions with Halstead volume above 200, difficulty above 5, effort above 1000 "
+      + "and more code lines than sonar.arch.method.lines.threshold");
+  public static final Metric<Integer> PY_DUP_LINES = integer("arch_py_dup_lines", "Python duplicated code lines",
+    "Python code lines inside duplicated blocks of sonar.arch.dup.tokens tokens, first occurrence not counted");
+  public static final Metric<Integer> PY_MFS_REFS = integer("arch_py_mfs_refs", "Python feedback arc set imports",
+    "Imports in a minimum feedback arc set, summed over all levels of the Python package tree");
+  public static final Metric<Integer> PY_CYCLE_REFS_TOTAL = integer("arch_py_cycle_refs_total", "Python imports between sibling packages",
+    "All imports between sibling Python packages, summed over all levels");
+  public static final Metric<Integer> PY_CYCLE_NODES = integer("arch_py_cycle_nodes", "Python packages in cycles",
+    "Python packages that are part of an import cycle among their siblings, summed over all levels");
+  public static final Metric<Integer> PY_CYCLE_NODES_TOTAL = integer("arch_py_cycle_nodes_total", "Python packages in the tree",
+    "All Python packages, summed over all levels");
+  public static final Metric<Double> PY_NESTING_TOPN_AVG = new Metric.Builder("arch_py_nesting_topn_avg", "Python deepest nesting average",
+    Metric.ValueType.FLOAT).setDescription("Average maximum nesting depth of the sonar.arch.nesting.topN deepest Python functions")
+    .setDomain(ARCHITECTURE).setQualitative(false).setDirection(Metric.DIRECTION_WORST).setDecimalScale(2).create();
+  public static final Metric<Double> PY_HALSTEAD_EFFORT_AVG = new Metric.Builder("arch_py_halstead_effort_avg",
+    "Python Halstead effort average", Metric.ValueType.FLOAT).setDescription("Average Halstead effort of the Python functions")
+    .setDomain(ARCHITECTURE).setQualitative(false).setDirection(Metric.DIRECTION_WORST).setDecimalScale(2).create();
+  public static final Metric<Integer> PY_UNUSED_NAMES = integer("arch_py_unused_names", "Unused Python private names",
+    "Module-level Python names starting with _ that nothing in the project references");
+  public static final Metric<Integer> PY_PRIVATE_NAMES = integer("arch_py_private_names", "Python private names",
+    "Module-level Python names starting with _ (functions, classes, variables)");
+  public static final Metric<String> PY_TOP_OFFENDERS = new Metric.Builder("arch_py_top_offenders", "Python top offenders",
+    Metric.ValueType.DATA).setDescription("JSON: the 10 Python functions, packages and names behind every maximum and count")
+    .setDomain(ARCHITECTURE).setQualitative(false).create();
+
   /** Summed from files to directories and the project. */
   public static final List<Metric<?>> SUMMED = List.of(METHODS, CODE_LINES, CC_SUM, CC_OVER_COUNT, METHOD_LINES_SUM, METHODS_COVERED,
     METHODS_COVERABLE, METHOD_LINES_OVER_COUNT, CLASS_LINES_OVER_COUNT, CBO_OVER_COUNT, HALSTEAD_OVER_COUNT, GLOBAL_REFS);
   /** Maximum of the files below. */
   public static final List<Metric<?>> MAXED = List.of(CC_MAX, CLASS_LINES_MAX, CBO_MAX);
+  /** Python values summed from files to directories and the project. */
+  public static final List<Metric<?>> PY_SUMMED = List.of(PY_CODE_LINES, PY_FUNCTIONS, PY_CLASSES, PY_CC_SUM, PY_CC_OVER_COUNT,
+    PY_FUNCTION_LINES_SUM, PY_FUNCTION_LINES_OVER_COUNT, PY_HALSTEAD_OVER_COUNT);
+  /** Python maximum of the files below. */
+  public static final List<Metric<?>> PY_MAXED = List.of(PY_CC_MAX);
   /** Computed over a set of files: the project, and each top-level directory. */
   public static final List<Metric<?>> SCOPED = List.of(DUP_LINES, MFS_REFS, CYCLE_REFS_TOTAL, CYCLE_NODES, CYCLE_NODES_TOTAL,
     DEP_PARENTS, DEP_PARENTS_OVER, DEP_FANOUT_MAX, PKG_SIZE_MAX, PKG_SIZE_OVER_COUNT, NESTING_TOPN_AVG, HALSTEAD_EFFORT_AVG,
@@ -122,6 +170,9 @@ public class ArchMetrics implements Metrics {
       CYCLE_REFS_TOTAL, CYCLE_NODES, CYCLE_NODES_TOTAL, DEP_PARENTS, DEP_PARENTS_OVER, DEP_FANOUT_MAX, PKG_SIZE_MAX, NESTING_TOPN_AVG,
       UNUSED_CLASSES, UNUSED_METHODS, UNUSED_VARIABLES, CLASSES, METHODS_TOTAL, VARIABLES_TOTAL, METHODS_COVERED, METHODS_COVERABLE,
       TOP_OFFENDERS, METHOD_LINES_OVER_COUNT, CLASS_LINES_OVER_COUNT, CBO_OVER_COUNT, HALSTEAD_OVER_COUNT, GLOBAL_REFS, HALSTEAD_EFFORT_AVG,
-      PKG_SIZE_OVER_COUNT, CLASS_MFS_REFS, CLASS_REFS_TOTAL, CLASS_CYCLE_NODES, CLASS_NODES, MODULE_MEASURES);
+      PKG_SIZE_OVER_COUNT, CLASS_MFS_REFS, CLASS_REFS_TOTAL, CLASS_CYCLE_NODES, CLASS_NODES, MODULE_MEASURES,
+      PY_CODE_LINES, PY_FUNCTIONS, PY_CLASSES, PY_CC_SUM, PY_CC_MAX, PY_CC_OVER_COUNT, PY_FUNCTION_LINES_SUM, PY_FUNCTION_LINES_OVER_COUNT,
+      PY_HALSTEAD_OVER_COUNT, PY_DUP_LINES, PY_MFS_REFS, PY_CYCLE_REFS_TOTAL, PY_CYCLE_NODES, PY_CYCLE_NODES_TOTAL, PY_NESTING_TOPN_AVG,
+      PY_HALSTEAD_EFFORT_AVG, PY_UNUSED_NAMES, PY_PRIVATE_NAMES, PY_TOP_OFFENDERS);
   }
 }

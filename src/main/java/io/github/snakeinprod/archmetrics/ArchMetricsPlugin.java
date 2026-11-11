@@ -19,7 +19,7 @@ public class ArchMetricsPlugin implements Plugin {
 
   @Override
   public void define(Context context) {
-    context.addExtensions(ArchMetrics.class, ArchMetricsSensor.class, ArchAggregator.class, ArchPage.class,
+    context.addExtensions(ArchMetrics.class, ArchMetricsSensor.class, PythonSensor.class, ArchAggregator.class, ArchPage.class,
       prop(CC_THRESHOLD, "Complexity threshold", "Methods with a complexity above this count in arch_cc_over_count.", "20", PropertyType.INTEGER),
       prop(CC_SWITCH_CASES, "Count switch cases", "Count each case of a switch in the method complexity instead of 1 per switch.", "false",
         PropertyType.BOOLEAN),

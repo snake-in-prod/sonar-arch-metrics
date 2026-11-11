@@ -1,4 +1,5 @@
-/* Project page "Architecture metrics": the raw arch_* measures with their definitions, and the top offenders. */
+/* Project page "Architecture metrics": the raw arch_* measures with their definitions, and the top offenders; a Python
+   section with the arch_py_* measures when the project has them. */
 window.registerExtension('archmetrics/architecture', function (options) {
   var keys = ['arch_code_lines', 'arch_methods', 'arch_cc_sum', 'arch_cc_max', 'arch_cc_over_count', 'arch_method_lines_sum',
     'arch_class_lines_max', 'arch_cbo_max', 'arch_dup_lines', 'arch_mfs_refs', 'arch_cycle_refs_total', 'arch_cycle_nodes',
@@ -8,6 +9,10 @@ window.registerExtension('archmetrics/architecture', function (options) {
     'arch_method_lines_over_count', 'arch_class_lines_over_count', 'arch_cbo_over_count', 'arch_halstead_over_count',
     'arch_halstead_effort_avg', 'arch_global_refs', 'arch_pkg_size_over_count', 'arch_class_mfs_refs', 'arch_class_refs_total',
     'arch_class_cycle_nodes', 'arch_class_nodes', 'arch_top_offenders'];
+  var pyKeys = ['arch_py_code_lines', 'arch_py_functions', 'arch_py_classes', 'arch_py_cc_sum', 'arch_py_cc_max',
+    'arch_py_cc_over_count', 'arch_py_function_lines_sum', 'arch_py_function_lines_over_count', 'arch_py_halstead_over_count',
+    'arch_py_halstead_effort_avg', 'arch_py_nesting_topn_avg', 'arch_py_dup_lines', 'arch_py_mfs_refs', 'arch_py_cycle_refs_total',
+    'arch_py_cycle_nodes', 'arch_py_cycle_nodes_total', 'arch_py_unused_names', 'arch_py_private_names', 'arch_py_top_offenders'];
   var el = document.createElement('div');
   el.setAttribute('style', 'padding:0 20px 20px 20px');
   // SonarQube places extension pages in a grid of two columns: span both, or the page gets only the first one
@@ -15,7 +20,8 @@ window.registerExtension('archmetrics/architecture', function (options) {
   options.el.style.width = '100%';
   options.el.appendChild(el);
   var base = (window.baseUrl || '');
-  var params = new URLSearchParams({component: options.component.key, metricKeys: keys.join(','), additionalFields: 'metrics'});
+  var params = new URLSearchParams({component: options.component.key, metricKeys: keys.concat(pyKeys).join(','),
+    additionalFields: 'metrics'});
   var branch = options.branchLike;
   if (branch && branch.name && !branch.isMain && branch.key === undefined) {
     params.set('branch', branch.name);
@@ -68,38 +74,49 @@ window.registerExtension('archmetrics/architecture', function (options) {
       (data.metrics || []).forEach(function (m) { defs[m.key] = m; });
       var values = {};
       (data.component.measures || []).forEach(function (m) { values[m.metric] = m.value; });
+      var hasPython = pyKeys.some(function (k) { return values[k] !== undefined; });
       if (values.arch_code_lines === undefined && values.arch_classes === undefined) {
-        // Python, TypeScript, Dart... projects: no Java analysed, so no measures at all
-        el.appendChild(text('p', 'No architecture metrics: this plugin measures Java code.', 'color:#666'));
-        return;
+        // TypeScript, Dart... projects, or Python only: no Java analysed, so no Java measures
+        el.appendChild(text('p', hasPython ? 'No Java measures.' : 'No architecture metrics: this plugin measures Java and Python code.',
+          'color:#666'));
+      } else {
+        section(keys, 'arch_top_offenders');
       }
-      var t = table(['Metric', 'Key', 'Value', 'Definition']);
-      keys.filter(function (k) { return k !== 'arch_top_offenders'; }).forEach(function (k) {
-        var tr = document.createElement('tr');
-        var d = defs[k] || {};
-        var missing = values[k] === undefined; // e.g. coverage measures without a JaCoCo report
-        tr.appendChild(cell(d.name || k));
-        tr.appendChild(cell(k));
-        tr.appendChild(cell(values[k], missing));
-        tr.appendChild(cell(d.description));
-        t.appendChild(tr);
-      });
-      el.appendChild(t);
+      if (hasPython) {
+        // separate keys on purpose: Python never changes the Java values above
+        el.appendChild(text('h1', 'Python', 'font-size:20px;margin:16px 0'));
+        section(pyKeys, 'arch_py_top_offenders');
+      }
 
-      var top = values.arch_top_offenders ? JSON.parse(values.arch_top_offenders) : {};
-      Object.keys(top).forEach(function (k) {
-        if (!top[k] || top[k].length === 0) {
-          return;
-        }
-        el.appendChild(text('h2', 'Behind ' + ((defs[k] || {}).name || k), 'font-size:16px;margin:12px 0 4px 0'));
-        var tt = table(['Name', 'File', 'Line', 'Value']);
-        top[k].forEach(function (row) {
+      function section(sectionKeys, offendersKey) {
+        var t = table(['Metric', 'Key', 'Value', 'Definition']);
+        sectionKeys.filter(function (k) { return k !== offendersKey; }).forEach(function (k) {
           var tr = document.createElement('tr');
-          [row.name, row.file, row.line, row.value].forEach(function (v) { tr.appendChild(cell(v)); });
-          tt.appendChild(tr);
+          var d = defs[k] || {};
+          var missing = values[k] === undefined; // e.g. coverage measures without a JaCoCo report
+          tr.appendChild(cell(d.name || k));
+          tr.appendChild(cell(k));
+          tr.appendChild(cell(values[k], missing));
+          tr.appendChild(cell(d.description));
+          t.appendChild(tr);
         });
-        el.appendChild(tt);
-      });
+        el.appendChild(t);
+
+        var top = values[offendersKey] ? JSON.parse(values[offendersKey]) : {};
+        Object.keys(top).forEach(function (k) {
+          if (!top[k] || top[k].length === 0) {
+            return;
+          }
+          el.appendChild(text('h2', 'Behind ' + ((defs[k] || {}).name || k), 'font-size:16px;margin:12px 0 4px 0'));
+          var tt = table(['Name', 'File', 'Line', 'Value']);
+          top[k].forEach(function (row) {
+            var tr = document.createElement('tr');
+            [row.name, row.file, row.line, row.value].forEach(function (v) { tr.appendChild(cell(v)); });
+            tt.appendChild(tr);
+          });
+          el.appendChild(tt);
+        });
+      }
     })
     .catch(function (e) { status.textContent = 'Cannot load the measures: ' + e; });
 

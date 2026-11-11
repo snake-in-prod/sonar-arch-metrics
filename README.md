@@ -1,6 +1,6 @@
 # Architecture Metrics
 
-Raw maintainability and test metrics for Java in SonarQube Community Build.
+Raw maintainability and test metrics for Java in SonarQube Community Build, and a separate set for Python.
 
 The plugin measures metrics known from the literature (method complexity, size, coupling, duplication, package
 cycles, dependency structure, nesting, unused code, method coverage) and stores the raw values as SonarQube measures
@@ -102,6 +102,55 @@ gets them. All are numeric (`arch_top_offenders` is JSON), not hidden, usable in
   modules, plus `target/site/jacoco*/jacoco.xml` and `build/reports/jacoco/**/*.xml`): a method is covered when any
   report covers it.
 
+## Python
+
+Key prefix `arch_py_`, on the main Python files (language `py`, `sonar.sources` only, tests excluded). The Python values
+use their own keys on purpose: the Java `arch_*` values above count Java only and stay exactly the same on a project
+that also holds Python, so tools that read them see no change. File metrics are added up to directories and the
+project like the Java ones; set metrics are computed for the project only (not per module).
+
+| Key | Level | Definition |
+|---|---|---|
+| `arch_py_code_lines` | file, sum | code lines: lines with a token, minus docstrings and other string-only statements and `assert` statements |
+| `arch_py_functions` | file, sum | functions and methods (`def`, `async def`), nested ones included, lambdas not |
+| `arch_py_classes` | file, sum | classes, nested ones included |
+| `arch_py_cc_sum` | file, sum | sum of function complexity |
+| `arch_py_cc_max` | file, max | largest function complexity |
+| `arch_py_cc_over_count` | file, sum | functions with a complexity above `sonar.arch.cc.threshold` |
+| `arch_py_function_lines_sum` | file, sum | code lines of all functions |
+| `arch_py_function_lines_over_count` | file, sum | functions with more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_py_halstead_over_count` | file, sum | functions with Halstead volume above 200, difficulty above 5, effort above 1000 and more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_py_halstead_effort_avg` | project | average Halstead effort of the functions |
+| `arch_py_nesting_topn_avg` | project | average nesting depth of the `sonar.arch.nesting.topN` most deeply nested functions |
+| `arch_py_dup_lines` | project | code lines in duplicated blocks of `sonar.arch.dup.tokens` tokens, first occurrence not counted |
+| `arch_py_mfs_refs` | project | imports in a minimum feedback arc set, summed over the levels of the package tree |
+| `arch_py_cycle_refs_total` | project | imports between sibling packages, summed over the levels |
+| `arch_py_cycle_nodes` | project | packages in an import cycle with their siblings, summed over the levels |
+| `arch_py_cycle_nodes_total` | project | packages in the tree, summed over the levels |
+| `arch_py_unused_names` / `arch_py_private_names` | project | module-level private names never referenced in the project / all of them |
+| `arch_py_top_offenders` | project | JSON: the 10 functions, packages and names behind each maximum and each count above |
+
+- **Parsing.** A lexer and a statement tree built from indentation; no Python runtime is needed. A file that does not
+  parse is still read as far as it goes.
+- **Function complexity.** 1, plus 1 per `if`, `elif`, `for`, `while` and `except`, plus 1 per `if` and `for` inside an
+  expression (conditional expressions and comprehensions, in f-strings too), plus 1 per `match` statement (with
+  `sonar.arch.cc.switchCases=true`: 1 per `case`, `case _` excluded). `and` and `or` do not count. Lambdas count inside
+  their function; a nested `def` is a function of its own.
+- **Function size.** Every code line belongs to its innermost function; a function starts at its `def` line, after its
+  decorators.
+- **Nesting.** Depth of nested `if`, `for`, `while`, `try`, `with` and `match`; `elif`, `else`, `except` and `finally`
+  stay at the depth of their statement.
+- **Halstead** as for Java: operands are names and literals, operators every other token (keywords included).
+- **Packages** are directories holding Python files (`src/app/core/x.py` is in `src.app.core`); the tree and the cycle
+  metrics are those of Java. A reference is a file importing another project file, counted once per pair of files.
+  Imports anywhere in a file count (inside functions and `if TYPE_CHECKING:` too). An import names the longest dotted
+  prefix that is a project module (`a/b.py`) or package (`a/b/__init__.py`): a relative import from the file's
+  package, an absolute one from each directory above the file and that directory's `src/`.
+- **Unused private names.** Candidates are names starting with `_` (not `__x__`, not `_` alone) bound at module level:
+  `def`, `class` and assignment targets outside any function or class, also inside top-level `if`, `try`, `with` and
+  loops. One is unused when no name anywhere in the project spells it, apart from `def` and `class` names and
+  module-level assignment targets; names inside f-strings count as uses.
+
 ## Settings
 
 | Property | Default | Meaning |
@@ -117,12 +166,15 @@ gets them. All are numeric (`arch_top_offenders` is JSON), not hidden, usable in
 | `sonar.arch.cbo.threshold` | `100` | coupling above which a class counts in `arch_cbo_over_count` |
 | `sonar.arch.pkg.size.threshold` | `27000000` | package size above which a package counts in `arch_pkg_size_over_count` |
 
-A setting changes the measure, never the code. Set them on the project, or on the scanner command line.
+A setting changes the measure, never the code. Set them on the project, or on the scanner command line. The Python
+measures read the same settings where the meaning is the same (complexity, switch cases, duplication window, nesting
+top N, method size); there are no Python-only settings.
 
 ## Page
 
 The project page *Architecture metrics* (in the project's *More* menu) lists every value with its definition and,
-for each maximum, the ten methods, classes or packages behind it.
+for each maximum, the ten methods, classes or packages behind it. A *Python* section with the `arch_py_*` values
+appears below when the project has them.
 
 ## Install
 
@@ -145,6 +197,8 @@ Nothing in the plugin depends on the branch: with a branch plugin every branch a
 - A module directory whose path SonarQube shows collapsed (for example `core/src/main/java` as one node) gets no
   module values.
 - The duplication index holds up to 16 million tokens (roughly 3 million lines).
+- Python names are matched by text: a private name spelled by any attribute, keyword argument or other name in the
+  project counts as used; a name used only through a string (`getattr`, `__all__`) counts as unused.
 
 ## Build
 

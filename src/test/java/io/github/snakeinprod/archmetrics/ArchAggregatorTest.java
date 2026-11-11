@@ -51,4 +51,22 @@ class ArchAggregatorTest {
     assertThat(added).containsOnlyKeys("arch_module_measures");
     assertThat((String) added.get("arch_module_measures")).contains("\"core\"").contains("arch_dup_lines");
   }
+
+  @Test
+  void python_file_values_are_summed_and_maxed_apart_from_java() {
+    Component component = proxy(Component.class, (name, args) -> name.equals("getType") ? Component.Type.DIRECTORY : "proj:py");
+    Measure three = proxy(Measure.class, (name, args) -> 3);
+    Measure four = proxy(Measure.class, (name, args) -> 4);
+    Map<String, Object> added = new LinkedHashMap<>();
+    MeasureComputerContext context = proxy(MeasureComputerContext.class, (name, args) -> switch (name) {
+      case "getComponent" -> component;
+      case "getChildrenMeasures" -> ((String) args[0]).startsWith("arch_py_") ? List.of(three, four) : List.of();
+      case "addMeasure" -> added.put((String) args[0], args[1]);
+      default -> null;
+    });
+    new ArchAggregator().compute(context);
+    assertThat(added).containsEntry("arch_py_code_lines", 7).containsEntry("arch_py_cc_max", 4).allSatisfy((k, v) ->
+      assertThat(k).startsWith("arch_py_"));
+    assertThat(added).hasSize(ArchMetrics.PY_SUMMED.size() + ArchMetrics.PY_MAXED.size());
+  }
 }

@@ -24,7 +24,8 @@ public class ArchAggregator implements MeasureComputer {
 
   @Override
   public MeasureComputerDefinition define(MeasureComputerDefinitionContext context) {
-    String[] keys = Stream.of(ArchMetrics.SUMMED, ArchMetrics.MAXED, ArchMetrics.SCOPED, List.of(ArchMetrics.MODULE_MEASURES))
+    String[] keys = Stream.of(ArchMetrics.SUMMED, ArchMetrics.MAXED, ArchMetrics.SCOPED, List.of(ArchMetrics.MODULE_MEASURES),
+        ArchMetrics.PY_SUMMED, ArchMetrics.PY_MAXED)
       .flatMap(List::stream).map(Metric::getKey).toArray(String[]::new);
     return context.newDefinitionBuilder().setOutputMetrics(keys).build();
   }
@@ -38,6 +39,12 @@ public class ArchAggregator implements MeasureComputer {
       aggregate(context, m.getKey(), false);
     }
     for (Metric<?> m : ArchMetrics.MAXED) {
+      aggregate(context, m.getKey(), true);
+    }
+    for (Metric<?> m : ArchMetrics.PY_SUMMED) {
+      aggregate(context, m.getKey(), false);
+    }
+    for (Metric<?> m : ArchMetrics.PY_MAXED) {
       aggregate(context, m.getKey(), true);
     }
     if (context.getComponent().getType() == Component.Type.DIRECTORY) {

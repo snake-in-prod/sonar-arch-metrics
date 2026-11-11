@@ -74,10 +74,44 @@ are references between them (from any file below each child). For each graph, fi
 (fewest references whose removal breaks all cycles): exact for graphs up to 20 nodes, a documented greedy heuristic
 above. Sum the numbers over all levels.
 
+## Python
+
+The main Python files (language `py`) get their own measures, key prefix `arch_py_`, from a separate sensor. They never
+change the Java `arch_*` values: those count Java only, so a project with Java and Python has the same `arch_*`
+values as its Java part alone (tested). Settings are shared where the meaning is the same; none are added.
+
+| Key | Level | Definition |
+|---|---|---|
+| `arch_py_code_lines` | file, sum | code lines: lines with a token, minus docstrings and other string-only statements and `assert` statements |
+| `arch_py_functions` | file, sum | functions and methods (`def`, `async def`), nested ones included, lambdas not |
+| `arch_py_classes` | file, sum | classes, nested ones included |
+| `arch_py_cc_sum` | file, sum | sum of function complexity |
+| `arch_py_cc_max` | file, max | largest function complexity |
+| `arch_py_cc_over_count` | file, sum | functions with a complexity above `sonar.arch.cc.threshold` |
+| `arch_py_function_lines_sum` | file, sum | code lines of all functions |
+| `arch_py_function_lines_over_count` | file, sum | functions with more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_py_halstead_over_count` | file, sum | functions with Halstead volume above 200, difficulty above 5, effort above 1000 and more code lines than `sonar.arch.method.lines.threshold` |
+| `arch_py_halstead_effort_avg` | project | average Halstead effort of the functions |
+| `arch_py_nesting_topn_avg` | project | average nesting depth of the `sonar.arch.nesting.topN` most deeply nested functions |
+| `arch_py_dup_lines` | project | code lines in duplicated blocks of `sonar.arch.dup.tokens` tokens, first occurrence not counted |
+| `arch_py_mfs_refs` | project | imports in a minimum feedback arc set, summed over the levels of the package tree |
+| `arch_py_cycle_refs_total` | project | imports between sibling packages, summed over the levels |
+| `arch_py_cycle_nodes` | project | packages in an import cycle with their siblings, summed over the levels |
+| `arch_py_cycle_nodes_total` | project | packages in the tree, summed over the levels |
+| `arch_py_unused_names` / `arch_py_private_names` | project | module-level private names never referenced in the project / all of them |
+| `arch_py_top_offenders` | project | JSON: the 10 functions, packages and names behind each maximum and each count above |
+
+Definitions follow the Java ones with Python constructs: complexity counts `if`, `elif`, `for`, `while`, `except`, the
+`if` and `for` of expressions and each `match` (or each case but `case _`); nesting counts `if`, `for`, `while`, `try`,
+`with` and `match`; packages are directories and references are imports between project files (one per pair of files),
+resolved for absolute, relative and `src/` layouts; private names are module-level names starting with `_`. Set metrics
+are computed for the project only. See the README for the details.
+
 ## Page
 
 One project page "Architecture metrics": a table of the raw values with their definitions and the top 10 classes,
-methods and packages behind every maximum (stored as a JSON DATA metric, `arch_top_offenders`).
+methods and packages behind every maximum (stored as a JSON DATA metric, `arch_top_offenders`). A "Python" section with
+the `arch_py_*` values and `arch_py_top_offenders` appears only when the project has them.
 
 ## Tests
 
@@ -87,7 +121,7 @@ test runs the plugin with the Sensor test harness on a small multi-package proje
 
 ## Out of scope
 
-Scores, grades, colours, weights, quality gate definitions, any language other than Java.
+Scores, grades, colours, weights, quality gate definitions, any language other than Java and Python.
 
 ## Done when
 
