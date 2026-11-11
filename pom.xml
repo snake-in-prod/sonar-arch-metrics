@@ -85,7 +85,7 @@
           <pluginName>Architecture Metrics</pluginName>
           <pluginClass>io.github.snakeinprod.archmetrics.ArchMetricsPlugin</pluginClass>
           <skipDependenciesPackaging>true</skipDependenciesPackaging>
-          <requiredForLanguages>java</requiredForLanguages>
+          <requiredForLanguages>java,py</requiredForLanguages>
           <pluginApiMinVersion>10.12</pluginApiMinVersion>
           <jreMinVersion>21</jreMinVersion>
         </configuration>
