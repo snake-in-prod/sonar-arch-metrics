@@ -95,8 +95,10 @@ public final class PyAnalysis {
       }
       dupTokens.add(t);
     }
-    project.put(ArchMetrics.PY_DUP_LINES.getKey(), Duplication.duplicatedLines(dupTokens, parsed.stream().map(Parsed::codeLines).toList(),
-      settings.dupTokens()));
+    if (Duplication.fits(dupTokens)) {
+      project.put(ArchMetrics.PY_DUP_LINES.getKey(), Duplication.duplicatedLines(dupTokens, parsed.stream().map(Parsed::codeLines).toList(),
+        settings.dupTokens()));
+    }
     List<Function> functions = parsed.stream().flatMap(p -> p.functions().stream()).toList();
     project.put(ArchMetrics.PY_NESTING_TOPN_AVG.getKey(), functions.stream().map(Function::nesting).sorted(Comparator.reverseOrder())
       .limit(settings.nestingTopN()).mapToInt(Integer::intValue).average().orElse(0));

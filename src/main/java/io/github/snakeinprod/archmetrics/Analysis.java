@@ -157,8 +157,12 @@ public final class Analysis {
     top.put(ArchMetrics.NESTING_TOPN_AVG.getKey(), topMethods(stats, sourceOf, FileStats.MethodInfo::nesting));
     top.put(ArchMetrics.CLASS_LINES_MAX.getKey(), topClasses(stats, sourceOf));
 
-    out.put(ArchMetrics.DUP_LINES.getKey(), Duplication.duplicatedLines(stats.stream().map(tokens::get).toList(),
-      stats.stream().map(FileStats::codeLines).toList(), settings.dupTokens()));
+    List<List<Tokens.Token>> dupFiles = stats.stream().map(tokens::get).toList();
+    // a project too large for the duplication index gets no duplication measure instead of a failed analysis
+    if (Duplication.fits(dupFiles)) {
+      out.put(ArchMetrics.DUP_LINES.getKey(), Duplication.duplicatedLines(dupFiles, stats.stream().map(FileStats::codeLines).toList(),
+        settings.dupTokens()));
+    }
     packageSizes(stats, out, top, settings.pkgSize());
     List<FileStats.MethodInfo> methods = stats.stream().flatMap(s -> s.methodInfos().stream()).toList();
     out.put(ArchMetrics.NESTING_TOPN_AVG.getKey(), methods.stream().map(FileStats.MethodInfo::nesting).sorted(Comparator.reverseOrder())

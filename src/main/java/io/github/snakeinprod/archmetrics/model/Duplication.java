@@ -15,6 +15,18 @@ public final class Duplication {
   private Duplication() {
   }
 
+  /** Largest number of tokens the index can hold (24 bits of token position in the packed key). */
+  public static final int MAX_TOKENS = (1 << 24) - 1;
+
+  /** Whether {@link #duplicatedLines} can measure these files: projects past {@link #MAX_TOKENS} get no duplication measure. */
+  public static boolean fits(List<List<Tokens.Token>> files) {
+    long total = 0;
+    for (List<Tokens.Token> f : files) {
+      total += f.size();
+    }
+    return total <= MAX_TOKENS;
+  }
+
   /** @param files tokens of each file, in a stable order; {@code codeLines} of the same files */
   public static int duplicatedLines(List<List<Tokens.Token>> files, List<Set<Integer>> codeLines, int window) {
     int total = 0;

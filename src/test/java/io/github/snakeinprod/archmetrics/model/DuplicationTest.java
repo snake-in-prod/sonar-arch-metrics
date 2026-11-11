@@ -42,4 +42,11 @@ class DuplicationTest {
     // the second method: its signature line (from "(") 9, block 10-14, its closing brace 15
     assertThat(Duplication.duplicatedLines(List.of(t), List.of(FileAnalyzer.codeLines(t, null)), 50)).isEqualTo(7);
   }
+
+  @Test
+  void projects_past_the_index_limit_get_no_measure_instead_of_an_error() {
+    Tokens.Token t = new Tokens.Token("x", 1);
+    assertThat(Duplication.fits(List.of(java.util.Collections.nCopies(Duplication.MAX_TOKENS, t)))).isTrue();
+    assertThat(Duplication.fits(List.of(java.util.Collections.nCopies(Duplication.MAX_TOKENS, t), List.of(t)))).isFalse();
+  }
 }
