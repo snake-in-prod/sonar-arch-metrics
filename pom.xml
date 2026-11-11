@@ -9,7 +9,7 @@
   <packaging>sonar-plugin</packaging>
 
   <name>Architecture Metrics</name>
-  <description>Raw maintainability and test metrics for Java in SonarQube</description>
+  <description>Raw maintainability and test metrics for Java and Python in SonarQube</description>
   <url>https://github.com/snake-in-prod/sonar-arch-metrics</url>
   <licenses>
     <license>
